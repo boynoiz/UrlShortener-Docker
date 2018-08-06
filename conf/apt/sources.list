@@ -1,0 +1,36 @@
+#------------------------------------------------------------------------------#
+#                   OFFICIAL DEBIAN REPOS
+#------------------------------------------------------------------------------#
+
+###### Debian Main Repos
+#deb http://ftp.debianclub.org/debian/ stretch main contrib non-free
+#deb-src http://ftp.debianclub.org/debian/ stretch main contrib non-free
+
+#deb http://ftp.debianclub.org/debian/ stretch-updates main contrib non-free
+#deb-src http://ftp.debianclub.org/debian/ stretch-updates main contrib non-free
+
+deb http://mirror.applebred.net/debian/ stretch main contrib non-free
+deb-src http://mirror.applebred.net/debian/ stretch main contrib non-free
+
+deb http://mirror.applebred.net/debian/ stretch-updates main contrib non-free
+deb-src http://mirror.applebred.net/debian/ stretch-updates main contrib non-free
+
+deb http://opensource.nchc.org.tw/debian/ stretch main contrib non-free
+deb-src http://opensource.nchc.org.tw/debian/ stretch main contrib non-free
+
+deb http://opensource.nchc.org.tw/debian/ stretch-updates main contrib non-free
+deb-src http://opensource.nchc.org.tw/debian/ stretch-updates main contrib non-free
+
+deb http://opensource.nchc.org.tw/debian/ stretch-backports main contrib non-free
+deb-src http://opensource.nchc.org.tw/debian/ stretch-backports main contrib non-free
+
+###### Debian Security
+
+#deb http://ftp.debianclub.org/debian-security/ stretch/updates main contrib non-free
+#deb-src http://ftp.debianclub.org/debian-security/ stretch/updates contrib non-free
+
+deb http://mirror.applebred.net/debian-security/ stretch/updates main contrib non-free
+deb-src http://mirror.applebred.net/debian-security/ stretch/updates contrib non-free
+
+deb http://security.debian.org/ stretch/updates main contrib non-free
+deb-src http://security.debian.org/ stretch/updates main contrib non-free

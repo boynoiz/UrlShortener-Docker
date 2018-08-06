@@ -1,0 +1,53 @@
+version: '3.3'
+services:
+  #Main Container
+  docker4dev:
+    build:
+      context: .
+      args:
+        - PROJECT_NAME=${APP_PROJECT_NAME}
+        - SSH_USER_NAME=${APP_SSH_USER_NAME}
+        - SSH_USER_PASSWORD=${APP_SSH_USER_PASSWORD}
+        - TZ=${APP_TZ}
+      dockerfile: Dockerfile
+    container_name: ${APP_PROJECT_NAME}-docker4dev
+    volumes:
+      - ./webroot:/var/www/${APP_PROJECT_NAME}
+    ports:
+      - "2222:22"
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+      - "8081:8081"
+      - "8082:8082"
+    environment:
+      - PHP_IDE_CONFIG=serverName=${APP_PROJECT_NAME}
+    links:
+      - mongo:${APP_PROJECT_NAME}-mongo
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - mongo
+    dns:
+      - 8.8.8.8
+      - 8.4.4.4
+    tty: true
+
+  #Other Service
+  mongo:
+    container_name: ${APP_PROJECT_NAME}-mongo
+    image: mongo
+    ports:
+      - "27017:27017"
+    expose:
+      - 27017
+    networks:
+        - frontend
+        - backend
+
+networks:
+  frontend:
+    driver: "bridge"
+  backend:
+    driver: "bridge"
