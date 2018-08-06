@@ -1,3 +1,2 @@
 /webroot
-/doc
-/backup
+.env
