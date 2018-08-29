@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#Copy cert file to host
+#Copy cert file from container to host
 cp /etc/nginx/ssl/* /opt/certs
 
-#Star Supervisord
+#Start Supervisord
 /usr/bin/supervisord -n -c /etc/supervisor/conf.d/supervisord.conf
