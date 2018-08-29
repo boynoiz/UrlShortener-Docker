@@ -51,7 +51,7 @@ Then build up a container
 $ docker-compose build
 ```
 
-Wait for a few minute util docker-compose finished then  
+Wait for a few minute until docker-compose finished then  
 
 ```sh
 $ docker-compose up
