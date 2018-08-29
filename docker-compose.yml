@@ -6,6 +6,8 @@ services:
       context: .
       args:
         - PROJECT_NAME=${APP_PROJECT_NAME}
+        - PROJECT_URL=${APP_PROJECT_URL}
+        - PROJECT_NGINX_SERVER_NAME=${APP_PROJECT_NGINX_SERVER_NAME}
         - SSH_USER_NAME=${APP_SSH_USER_NAME}
         - SSH_USER_PASSWORD=${APP_SSH_USER_PASSWORD}
         - TZ=${APP_TZ}
@@ -13,13 +15,11 @@ services:
     container_name: ${APP_PROJECT_NAME}-docker4dev
     volumes:
       - ./webroot:/var/www/${APP_PROJECT_NAME}
+      - ./certs:/opt/certs
     ports:
       - "2222:22"
       - "80:80"
       - "443:443"
-      - "8080:8080"
-      - "8081:8081"
-      - "8082:8082"
     environment:
       - PHP_IDE_CONFIG=serverName=${APP_PROJECT_NAME}
     links:
@@ -38,6 +38,10 @@ services:
   mongo:
     container_name: ${APP_PROJECT_NAME}-mongo
     image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${APP_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${APP_DB_PASSWORD}
     ports:
       - "27017:27017"
     expose:

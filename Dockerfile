@@ -7,11 +7,15 @@ FROM debian:stretch-slim
 LABEL maintainer="Pathompong Pechkongtong <boynoiz [at] gmail.com>"
 
 ARG PROJECT_NAME
+ARG PROJECT_URL
+ARG PROJECT_NGINX_SERVER_NAME
 ARG SSH_USER_NAME
 ARG SSH_USER_PASSWORD
 ARG TZ
 
 ENV PROJECT_NAME ${PROJECT_NAME}
+ENV PROJECT_URL ${PROJECT_URL}
+ENV PROJECT_NGINX_SERVER_NAME ${PROJECT_NGINX_SERVER_NAME}
 ENV SSH_USER_NAME ${SSH_USER_NAME}
 ENV SSH_USER_PASSWORD ${SSH_USER_PASSWORD}
 ENV TZ ${TZ}
@@ -19,8 +23,10 @@ ENV TZ ${TZ}
 ################################################################################
 # Build instructions
 ################################################################################
-
+SHELL ["/bin/bash", "-c"]
 # Add custom repository
+
+RUN echo ${PROJECT_NAME}
 
 RUN rm /etc/apt/sources.list
 ADD conf/apt/sources.list /etc/apt/sources.list
@@ -60,18 +66,15 @@ RUN apt-get clean && apt-get autoclean && \
   apt-get update && \
   DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --no-install-suggests -yqq \
   htop \
-  python-pip \
   openssh-server \
   git \
   git-core \
   nano \
-  vim \
   supervisor \
   automake \
   libtool \
   libssl-dev \
   libgss3 \
-  libmagickwand-dev \
   openssl \
   nasm
 
@@ -88,21 +91,23 @@ RUN rm -rf /etc/nginx/sites-*/
 RUN mkdir /etc/nginx/sites-available/ && mkdir /etc/nginx/sites-enabled/
 
 # Create directory for fastCgi caching
-RUN mkdir -p /usr/share/nginx/cache/shurl
+RUN mkdir -p /usr/share/nginx/cache
 
 ADD conf/nginx/sites-available/default.conf /etc/nginx/sites-available/default.conf
 RUN ln -s /etc/nginx/sites-available/default.conf /etc/nginx/sites-enabled/default.conf
 
 ##WORKSPACE PROJECT
-ADD conf/nginx/sites-available/shurl.conf /etc/nginx/sites-available/shurl.conf
+ADD conf/nginx/sites-available/PROJECT_NAME.conf /etc/nginx/sites-available/${PROJECT_NAME}.conf
+RUN sed -i \
+        -e "s/#{PROJECT_NAME}/${PROJECT_NAME}/g" \
+        -e "s/#{PROJECT_URL}/${PROJECT_URL}/g" \
+        -e "s/#{PROJECT_NGINX_SERVER_NAME}/${PROJECT_NGINX_SERVER_NAME}/g" \
+        /etc/nginx/sites-available/${PROJECT_NAME}.conf
 
-RUN ln -s /etc/nginx/sites-available/shurl.conf /etc/nginx/sites-enabled/shurl.conf
+RUN ln -s /etc/nginx/sites-available/${PROJECT_NAME}.conf /etc/nginx/sites-enabled/${PROJECT_NAME}.conf
 
-
-# Nginx site conf
-RUN mkdir -p /etc/nginx/ssl/CA/ && \
-mkdir -p /etc/nginx/ssl/certs/ && \
-mkdir -p /etc/nginx/ssl/config/ && \
+# Prepare
+RUN mkdir -p /etc/nginx/ssl && \
 rm -Rf /var/www/* && \
 mkdir -p /var/www/html/ && \
 mkdir -p /var/www/tmp && \
@@ -110,37 +115,25 @@ chown -R www-data:www-data /var/www/ && \
 chmod a+x /var/www/
 
 # Add SSL Self-Host for nginx
-RUN /usr/bin/openssl dhparam -out /etc/nginx/ssl/certs/dhparam.pem 2048
+RUN /usr/bin/openssl dhparam -out /etc/nginx/ssl/dhparam.pem 2048
 
-ADD conf/nginx/ssl/config/rootCA.cnf /etc/nginx/ssl/config/rootCA.cnf
-ADD conf/nginx/ssl/config/v3.ext /etc/nginx/ssl/config/v3.ext
+# Create Root CA Cert and Key
+RUN /usr/bin/openssl genrsa -out /etc/nginx/ssl/rootCA.key 2048
 
-# Create Root CA Cert and Key for server-side
-RUN mkdir -p /etc/nginx/ssl/CA
-RUN /usr/bin/openssl genrsa -out /etc/nginx/ssl/CA/rootCA.key 2048
-RUN /usr/bin/openssl req -x509 -new -nodes \
-    -subj "/C=TH/ST=Somewhere/L=Somehow/O=NoOneLTD/OU=IT Department/CN=NoOneLTD" \
-    -key /etc/nginx/ssl/CA/rootCA.key \
-    -sha256 -days 3650 -out /etc/nginx/ssl/CA/rootCA.pem
-
-# Create Cert and Key for web server and client side
-RUN /usr/bin/openssl req -new -sha256 -nodes \
-    -out /etc/nginx/ssl/certs/nginx-selfsigned.csr \
-    -newkey rsa:2048 -keyout /etc/nginx/ssl/certs/nginx-selfsigned.key \
-    -config /etc/nginx/ssl/config/rootCA.cnf
-
-RUN /usr/bin/openssl x509 -req -in /etc/nginx/ssl/certs/nginx-selfsigned.csr \
-    -CA /etc/nginx/ssl/CA/rootCA.pem \
-    -CAkey /etc/nginx/ssl/CA/rootCA.key \
-    -CAcreateserial -out /etc/nginx/ssl/certs/nginx-selfsigned.crt \
-    -days 3650 -sha256 -extfile /etc/nginx/ssl/config/v3.ext
-
-
-RUN chown www-data:www-data /etc/nginx/ssl/certs/nginx-selfsigned.key && \
-    chown www-data:www-data /etc/nginx/ssl/certs/nginx-selfsigned.crt
-
-RUN cp /etc/nginx/ssl/CA/rootCA.pem /usr/local/share/ca-certificates/ && \
-    update-ca-certificates
+RUN /usr/bin/openssl req \
+  -newkey rsa:2048 \
+  -x509 \
+  -nodes \
+  -keyout /etc/nginx/ssl/${PROJECT_URL}.key \
+  -new \
+  -out /etc/nginx/ssl/${PROJECT_URL}.crt \
+  -subj "/C=US/ST=Distributed/L=Cloud/O=Cluster/CN=\*.${PROJECT_URL}" \
+  -reqexts SAN \
+  -extensions SAN \
+  -config  \
+  <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=DNS.1:${PROJECT_URL},DNS.2:\*.${PROJECT_URL}")) \
+  -sha256 \
+  -days 3650
 
 # Config timezone, Localization
 RUN echo ${TZ} >> /etc/timezone && \
@@ -150,7 +143,7 @@ RUN echo ${TZ} >> /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata && \
     apt-get clean
 
-RUN echo 'en_US ISO-8859-1\nen_US.UTF-8 UTF-8\nth_TH.UTF-8 UTF-8\n' >> /etc/locale.gen &&  \
+RUN echo -e "en_US ISO-8859-1\nen_US.UTF-8 UTF-8\nth_TH.UTF-8 UTF-8\n" >> /etc/locale.gen &&  \
     /usr/sbin/locale-gen
 
 # Installation nodejs
@@ -159,6 +152,8 @@ RUN npm install -g pm2
 
 # Add supervisor configuration files
 ADD conf/supervisor/conf.d/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+ADD entrypoint.sh /opt/entrypoint.sh
+RUN chmod +x /opt/entrypoint.sh
 
 # Add user for ssh
 RUN adduser --quiet --disabled-password --shell /bin/bash --home /home/${SSH_USER_NAME} --gecos "Docker ToolBox" ${SSH_USER_NAME} && \
@@ -184,10 +179,10 @@ RUN echo "export PATH=$HOME/bin:/usr/local/bin:$PATH:$HOME/.composer/vendor/bin"
 # Volumes
 ################################################################################
 
-VOLUME ["/var/www"]
+VOLUME ["/var/www", "/opt/certs"]
 
 ################################################################################
 # Entrypoint
 ################################################################################
 CMD []
-ENTRYPOINT ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+ENTRYPOINT ["/opt/entrypoint.sh"]
